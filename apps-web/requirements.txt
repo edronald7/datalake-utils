@@ -1,0 +1,7 @@
+flask
+pywebview
+pyinstaller
+numpy
+pandas
+pyarrow
+openpyxl
