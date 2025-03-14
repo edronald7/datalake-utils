@@ -1,3 +1,4 @@
+pyyaml
 pyqt5
 numpy
 pandas
