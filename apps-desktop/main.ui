@@ -231,7 +231,7 @@
            <widget class="QPushButton" name="btnShow">
             <property name="maximumSize">
              <size>
-              <width>40</width>
+              <width>45</width>
               <height>16777215</height>
              </size>
             </property>
@@ -295,7 +295,7 @@
             </property>
             <property name="maximumSize">
              <size>
-              <width>60</width>
+              <width>64</width>
               <height>16777215</height>
              </size>
             </property>
@@ -319,7 +319,7 @@
             </property>
             <property name="maximumSize">
              <size>
-              <width>60</width>
+              <width>64</width>
               <height>16777215</height>
              </size>
             </property>
@@ -373,6 +373,7 @@
     </item>
    </layout>
   </widget>
+  
   <widget class="QMenuBar" name="menubar">
    <property name="geometry">
     <rect>
@@ -390,7 +391,6 @@
     <addaction name="actionOpenCSVGZFile"/>
     <addaction name="actionOpenCSVFile"/>
     <addaction name="actionOpenTXTFile"/>
-    <addaction name="actionOpenExcelFile"/>
     <addaction name="separator"/>
     <addaction name="actionCloseAndClean"/>
     <addaction name="separator"/>
@@ -400,22 +400,19 @@
     <property name="title">
      <string>Extract Tools</string>
     </property>
-    <addaction name="actionExtract_Random_Data"/>
-    <addaction name="actionExtract_Head"/>
-    <addaction name="actionExtract_Tail"/>
+    <addaction name="actionExtractExportData"/>
     <addaction name="separator"/>
-    <addaction name="separator"/>
-    <addaction name="actionExtract_Schema_to_Excel"/>
-    <addaction name="actionExtract_Schema_to_JSON"/>
+    <addaction name="actionExportParquet"/>
    </widget>
-   <widget class="QMenu" name="menuConvert_Tools">
+   <widget class="QMenu" name="menuSchema">
     <property name="title">
-     <string>Convert Tools</string>
+     <string>Schema Tools</string>
     </property>
-    <addaction name="actionParquet_to_CSV"/>
-    <addaction name="actionParquet_to_XLSX"/>
+    <addaction name="actionSchemaView"/>
+    <addaction name="actionSchemaToExcel"/>
+    <addaction name="actionSchemaToJSON"/>
     <addaction name="separator"/>
-    <addaction name="actionExcel_to_Parquet"/>
+    <addaction name="actionCompareJSONSchemas"/>
    </widget>
    <widget class="QMenu" name="menuHelp">
     <property name="title">
@@ -425,9 +422,10 @@
    </widget>
    <addaction name="menuFile"/>
    <addaction name="menuTools"/>
-   <addaction name="menuConvert_Tools"/>
+   <addaction name="menuSchema"/>
    <addaction name="menuHelp"/>
   </widget>
+  
   <action name="actionOpenParquetFile">
    <property name="text">
     <string>Open *.parquet File</string>
@@ -448,76 +446,50 @@
     <string>Open *.txt File</string>
    </property>
   </action>
-  <action name="actionExtract_Schema">
-   <property name="text">
-    <string>Extract Schema</string>
-   </property>
-  </action>
-  <action name="actionExtract_Random_Data">
-   <property name="text">
-    <string>Extract Random Data</string>
-   </property>
-  </action>
-  <action name="actionExtract_Head">
-   <property name="text">
-    <string>Extract Head</string>
-   </property>
-  </action>
-  <action name="actionExtract_Tail">
-   <property name="text">
-    <string>Extract Tail</string>
-   </property>
-  </action>
-  <action name="actionConvert_Partquet_to_CSV">
-   <property name="text">
-    <string>Convert Partquet to CSV</string>
-   </property>
-  </action>
-  <action name="actionParquet_to_CSV">
-   <property name="text">
-    <string>Parquet to CSV</string>
-   </property>
-  </action>
-  <action name="actionParquet_to_XLSX">
-   <property name="text">
-    <string>Parquet to Excel</string>
-   </property>
-  </action>
-  <action name="actionExcel_to_Parquet">
-   <property name="text">
-    <string>Excel to Parquet</string>
-   </property>
-  </action>
-  <action name="actionOpenExcelFile">
-   <property name="text">
-    <string>Open *.xlsx Files</string>
-   </property>
-  </action>
-  <action name="actionAbout">
-   <property name="text">
-    <string>About</string>
-   </property>
-  </action>
-  <action name="actionExtract_Schema_to_Excel">
-   <property name="text">
-    <string>Extract Schema to Excel</string>
-   </property>
-  </action>
-  <action name="actionExtract_Schema_to_JSON">
-   <property name="text">
-    <string>Extract Schema to JSON</string>
-   </property>
-  </action>
-  <action name="actionSalir_o_Cerrar">
-   <property name="text">
-    <string>Salir o Cerrar</string>
-   </property>
-  </action>
   <action name="actionCloseAndClean">
    <property name="text">
     <string>Close File and Clean</string>
    </property>
   </action>
+
+  <action name="actionExtractExportData">
+   <property name="text">
+    <string>Extract and Export Data</string>
+   </property>
+  </action>
+  <action name="actionExportParquet">
+   <property name="text">
+    <string>Export to Parquet</string>
+   </property>
+  </action>
+
+  <action name="actionSchemaView">
+   <property name="text">
+    <string>Extract Schema and View</string>
+   </property>
+  </action>
+  <action name="actionSchemaToExcel">
+   <property name="text">
+    <string>Extract Schema to Excel</string>
+   </property>
+  </action>
+  <action name="actionSchemaToJSON">
+   <property name="text">
+    <string>Extract Schema to JSON</string>
+   </property>
+  </action>
+  <action name="actionCompareJSONSchemas">
+   <property name="text">
+    <string>Compare two JSON Schemas</string>
+   </property>
+  </action>
+
+  <action name="actionAbout">
+   <property name="text">
+    <string>About</string>
+   </property>
+  </action>
+  
   <action name="actionExit">
    <property name="text">
     <string>Exit</string>

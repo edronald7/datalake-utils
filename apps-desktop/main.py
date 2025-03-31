@@ -1,6 +1,8 @@
 import sys
+import json
 import yaml
 import pandas as pd
+from datetime import datetime
 from PyQt5 import QtWidgets, uic
 
 class Main(QtWidgets.QMainWindow):
@@ -26,6 +28,8 @@ class Main(QtWidgets.QMainWindow):
         self.setWindowTitle("Datalake Utils")
         self.set_status("No records")
         self.path_file = None
+        self.data_file_name = None
+        self.data_file_ext = None
         self.dataframe = pd.DataFrame()
         self.dataindex = 0
         self.datarows = 0
@@ -45,6 +49,17 @@ class Main(QtWidgets.QMainWindow):
         self.btnPagPrevious.clicked.connect(self.on_page_previous)
         self.btnPagNext.clicked.connect(self.on_page_next)
 
+        # Extract actions
+        self.actionExtractExportData.triggered.connect(self.extract_export_data)
+        self.actionExportParquet.triggered.connect(self.export_parquet_data)
+
+        # Schema actions
+        self.actionSchemaView.triggered.connect(self.extract_schema_view)
+        self.actionSchemaToExcel.triggered.connect(self.extract_schema_to_excel)
+        self.actionSchemaToJSON.triggered.connect(self.extract_schema_to_json)
+        self.actionCompareJSONSchemas.triggered.connect(self.compare_json_schemas)
+
+        self.actionAbout.triggered.connect(self.show_about)
 
     def close_window(self):
         # Cerrar ventana si confirma con si
@@ -56,64 +71,88 @@ class Main(QtWidgets.QMainWindow):
         self.set_status("Select file...")
         path_file = QtWidgets.QFileDialog.getOpenFileName(self, 'Open File', '', 'Parquet Files (*.parquet)')[0]
         if path_file:
-            self.dataframe = pd.read_parquet(path_file)
+            self.path_file = path_file
+            # abrir con pyarrow priorizando Thrift Metadata como por defecto
+            self.dataframe = pd.read_parquet(path_file, engine='pyarrow')
             self.set_status_total_records()
             self.show_data()
+
+    def open_file_text_plain(self, filter, compres = 'infer', sep_default = '|'):
+        self.set_status("Select file...")
+        path_file = QtWidgets.QFileDialog.getOpenFileName(self, 'Open File', '', filter)[0]
+        if path_file:
+            # Crear el QMessageBox
+            select_box = QtWidgets.QMessageBox()
+            select_box.setWindowTitle("Select file options")
+            select_box.setText("Select the file options")
+            select_box.setStandardButtons(QtWidgets.QMessageBox.Ok | QtWidgets.QMessageBox.Cancel)
+            select_box.setDefaultButton(QtWidgets.QMessageBox.Ok)
+            select_box.setModal(True)
+
+            # Crear el contenedor y el layout para los combos
+            container = QtWidgets.QWidget()
+            layout = QtWidgets.QVBoxLayout(container)
+
+            # Primer QComboBox (separador)
+            layout_sep = QtWidgets.QHBoxLayout()
+            label_sep = QtWidgets.QLabel("Separator:")
+            layout_sep.addWidget(label_sep)
+            option_sep = QtWidgets.QComboBox()
+            option_sep.addItems([';', ',', '|', '\t'])
+            option_sep.setCurrentText(sep_default)
+            option_sep.setToolTip("Select the column separator, the last one is tab")
+            layout_sep.addWidget(option_sep)
+            layout.addLayout(layout_sep)
+
+            # Segundo QComboBox (codificación)
+            layout_enc = QtWidgets.QHBoxLayout()
+            label_enc = QtWidgets.QLabel("Encoding:")
+            layout_enc.addWidget(label_enc)
+            option_enc = QtWidgets.QComboBox()
+            option_enc.addItems(self.file_encodings)
+            option_enc.setCurrentText(self.file_encodings[0])
+            option_enc.setToolTip("Select the file encoding")
+            layout_enc.addWidget(option_enc)
+            layout.addLayout(layout_enc)
+
+            # Tercer QComboBox (inferir tipos)
+            option_infer = QtWidgets.QCheckBox("Infer types")
+            option_infer.setChecked(self.file_auto_infer_types)
+            option_infer.setToolTip("Infer types from the file")
+            layout.addWidget(option_infer)
+
+            # Agregar el contenedor al layout interno del QMessageBox
+            # El layout de QMessageBox es un QGridLayout, y necesitamos añadir el widget en una posición válida
+            select_box.layout().addWidget(container, 1, 0, 1, select_box.layout().columnCount())
+
+            # Ejecutar el QMessageBox y obtener resultados
+            if select_box.exec_() == QtWidgets.QMessageBox.Ok:
+                self.file_delimiter = option_sep.currentText()
+                self.file_encoding = option_enc.currentText()
+                self.file_auto_infer_types = option_infer.isChecked()
+                self.path_file = path_file
+                self.dataframe = pd.read_csv(path_file, sep=self.file_delimiter, encoding=self.file_encoding, dtype=None if self.file_auto_infer_types else 'str', compression=compres)
+
+                self.set_status_total_records()
+                self.show_data()
 
     def open_file_csv_gzip(self):
-        self.set_status("Select file...")
-        path_file = QtWidgets.QFileDialog.getOpenFileName(self, 'Open File', '', 'CSV Gzip Files (*.csv.gz)')[0]
-        if path_file:
-            index_encoding = 0
-            while index_encoding < len(self.file_encodings):
-                try:
-                    if self.file_auto_infer_types:
-                        self.dataframe = pd.read_csv(path_file, encoding=self.file_encodings[index_encoding], compression='gzip')
-                    else:
-                        self.dataframe = pd.read_csv(path_file, encoding=self.file_encodings[index_encoding], dtype='str', compression='gzip')
-                    break
-                except:
-                    index_encoding += 1
-
-            self.set_status_total_records()
-            self.show_data()
+        compres = 'gzip'
+        filter = 'CSV Gzip Files (*.csv.gz)'
+        sep = ','
+        self.open_file_text_plain(filter, compres, sep)    
 
     def open_file_csv(self):
-        self.set_status("Select file...")
-        path_file = QtWidgets.QFileDialog.getOpenFileName(self, 'Open File', '', 'Text Files CSV (*.csv)')[0]
-        if path_file:
-            index_encoding = 0
-            while index_encoding < len(self.file_encodings):
-                try:
-                    if self.file_auto_infer_types:
-                        self.dataframe = pd.read_csv(path_file, encoding=self.file_encodings[index_encoding])
-                    else:
-                        self.dataframe = pd.read_csv(path_file, encoding=self.file_encodings[index_encoding], dtype='str')
-                    break
-                except:
-                    index_encoding += 1
-
-            self.set_status_total_records()
-            self.show_data()
+        filter = 'CSV Files (*.csv)'
+        compres = 'infer'
+        sep = ','
+        self.open_file_text_plain(filter, compres, sep)
 
     def open_file_txt(self):
-        print("Delimitador:", self.file_delimiter)
-        self.set_status("Select file...")
-        path_file = QtWidgets.QFileDialog.getOpenFileName(self, 'Open File', '', 'Text Files (*.txt);;Text File (*.TXT)')[0]
-        if path_file:
-            index_encoding = 0
-            while index_encoding < len(self.file_encodings):
-                try:
-                    if self.file_auto_infer_types:
-                        self.dataframe = pd.read_csv(path_file, sep=self.file_delimiter, encoding=self.file_encodings[index_encoding])
-                    else:
-                        self.dataframe = pd.read_csv(path_file, sep=self.file_delimiter, encoding=self.file_encodings[index_encoding], dtype='str')
-                    break
-                except Exception as ex:
-                    print("Error:", ex)
-                    index_encoding += 1
-            self.set_status_total_records()
-            self.show_data()
+        filter = 'Text Files (*.txt);;Text File (*.TXT)'
+        compres = 'infer'
+        sep = '|'
+        self.open_file_text_plain(filter, compres, sep)
 
     def clear_data(self):
         self.dataframe = pd.DataFrame()
@@ -122,7 +161,24 @@ class Main(QtWidgets.QMainWindow):
         self.tableWidget.setRowCount(0)
         self.set_status("No records")
 
+    def set_data_file_info(self):
+        self.data_file_ext = self.path_file.split('.')[-1]
+        # si es linux o mac
+        if '/' in self.path_file:
+            self.data_file_name = self.path_file.split('/')[-1]
+        else:
+            # si es windows
+            if '\\' in self.path_file:
+                self.data_file_name = self.path_file.split('\\')[-1]
+            else:
+                self.data_file_name = self.path_file.split('/')[-1]
+
+        self.data_file_name = self.data_file_name.split('.')[0]
+
+
     def show_data(self):
+        self.set_data_file_info()
+
         # Clean tableWidget
         self.tableWidget.clear()
 
@@ -146,7 +202,7 @@ class Main(QtWidgets.QMainWindow):
             index_grid += 1
             self.progressBar.setValue(int((self.dataindex/self.datarows)*100))
             QtWidgets.QApplication.processEvents()
-        
+        self.tableWidget.setAlternatingRowColors(True)
         self.set_count_showing()
 
     def fill_table(self):
@@ -201,6 +257,284 @@ class Main(QtWidgets.QMainWindow):
 
     def set_status(self, message):
         self.labelStatus.setText(message)
+
+    def get_spark_type(self, dtype_str):
+        # devolver el tipo de dato de spark equivalente para enteros, decimales, cadenas
+        if dtype_str.lower().startswith('int') or dtype_str.lower() in ['int64', 'int32', 'int16', 'int8', 'uint8', 'uint16', 'uint32', 'uint64', 'integer', 'int']:
+            return 'integer'
+        elif dtype_str.lower().startswith('float') or dtype_str.lower() in ['float64', 'float32', 'float16', 'double']:
+            return 'double'
+        elif dtype_str.lower().startswith('str') or dtype_str.lower() in ['object', 'string']:
+            return 'string'
+        else:
+            return 'string'
+        
+    def get_schema_df(self):
+        # Set that first column is "column_name" and second column is "dtype"
+        list_columns = []
+        for col in self.dataframe.columns:
+            type_pandas = self.dataframe[col].dtype.name
+            type_spark = self.get_spark_type(type_pandas)
+            list_columns.append({'Column Name': col, 'Pandas Type': type_pandas, 'Spark Type': type_spark})
+        
+        return pd.DataFrame(list_columns)
+    
+    # Extract functions
+    def extract_export_data(self):
+        if self.dataframe.empty:
+            self.set_status("No records")
+            QtWidgets.QMessageBox.information(self, 'Message', "No records to export", QtWidgets.QMessageBox.Ok)
+            return
+        
+        export_box = QtWidgets.QMessageBox()
+        export_box.setWindowTitle("Select export options")
+        export_box.setText("Select extract and export options")
+        export_box.setStandardButtons(QtWidgets.QMessageBox.Ok | QtWidgets.QMessageBox.Cancel)
+        export_box.setDefaultButton(QtWidgets.QMessageBox.Ok)
+        export_box.setModal(True)
+
+        # Crear el contenedor y el layout para los combos
+        container = QtWidgets.QWidget()
+        layout = QtWidgets.QVBoxLayout(container)
+
+        layout_data = QtWidgets.QHBoxLayout()
+        label_data = QtWidgets.QLabel("Extract:")
+        layout_data.addWidget(label_data)
+        section_data = QtWidgets.QComboBox()
+        section_data.addItems(['Head', 'Tail', 'Random', 'All'])
+        section_data.setCurrentText('Head')
+        section_data.setToolTip("Select the type of extract")
+        layout_data.addWidget(section_data)
+        layout.addLayout(layout_data)
+
+        layout_rows = QtWidgets.QHBoxLayout()
+        label_rows = QtWidgets.QLabel("Rows:")
+        layout_rows.addWidget(label_rows)
+        input_rows = QtWidgets.QSpinBox()
+        input_rows.setMinimum(1)
+        input_rows.setMaximum(999000000)
+        input_rows.setValue(50)
+        input_rows.setToolTip("Select the number of rows to extract")
+        layout_rows.addWidget(input_rows)
+        layout.addLayout(layout_rows)
+
+        layout_sep = QtWidgets.QHBoxLayout()
+        label_sep = QtWidgets.QLabel("Separator:")
+        layout_sep.addWidget(label_sep)
+        sep_field = QtWidgets.QComboBox()
+        sep_field.addItems([';', ',', '|', '\t'])
+        sep_field.setCurrentText(self.file_delimiter)
+        sep_field.setToolTip("Select the column separator, the last one is tab")
+        layout_sep.addWidget(sep_field)
+        layout.addLayout(layout_sep)
+
+        text_except_fields = QtWidgets.QLineEdit()
+        text_except_fields.setPlaceholderText("Columns to exclude, separated by commas")
+        text_except_fields.setToolTip("Columns to exclude, separated by commas")
+        layout.addWidget(text_except_fields)
+        
+        with_compress = QtWidgets.QCheckBox("Compress the file (*.csv.gz)")
+        with_compress.setChecked(True)
+        with_compress.setToolTip("Compress the file, if applicable")
+        layout.addWidget(with_compress)
+
+        # Agregar el contenedor al layout interno del QMessageBox
+        # El layout de QMessageBox es un QGridLayout, y necesitamos añadir el widget en una posición válida
+        export_box.layout().addWidget(container, 1, 0, 1, export_box.layout().columnCount())
+
+        # Ejecutar el QMessageBox y obtener resultados
+        if export_box.exec_() == QtWidgets.QMessageBox.Ok:
+            # Obtener los valores seleccionados
+            option_data = section_data.currentText()
+            option_rows = input_rows.value()
+            option_sep = sep_field.currentText()
+            option_except_fields = text_except_fields.text()
+            option_compress = with_compress.isChecked()
+            
+            # Filtrar los campos a excluir
+            if option_except_fields:
+                list_except = [col.strip() for col in option_except_fields.split(',')]
+                df_export = self.dataframe.drop(columns=list_except, errors='ignore').copy()
+            else:
+                df_export = self.dataframe.copy()
+            # Obtener el tipo de exportación
+            if option_data in ['Head', 'Tail']:
+                if option_data == 'Head':
+                    df_export = df_export.head(option_rows)
+                else:
+                    df_export = df_export.tail(option_rows)
+            elif option_data == 'Random':
+                df_export = df_export.sample(n=option_rows)
+            elif option_data == 'All':
+                pass
+            else:
+                self.set_status("No records")
+                return
+            # Exportar el archivo
+            path_file = QtWidgets.QFileDialog.getSaveFileName(self, 'Save File', self.data_file_name + '_export.csv', 'CSV Files (*.csv)')[0]
+            if path_file:
+                # Si el checkbox de compresion esta marcado, usar gzip
+                if option_compress:
+                    df_export.to_csv(f'{path_file}.gz', sep=option_sep, index=False, compression='gzip')
+                else:
+                    df_export.to_csv(path_file, sep=option_sep, index=False)
+                self.set_status("Data exported to {}".format(path_file))
+
+    def export_parquet_data(self):
+        if self.dataframe.empty:
+            self.set_status("No records")
+            QtWidgets.QMessageBox.information(self, 'Message', "No records to export", QtWidgets.QMessageBox.Ok)
+            return
+        # Sugerir nombre de archivo self.data_file_name + '_export.parquet'
+        path_file = QtWidgets.QFileDialog.getSaveFileName(self, 'Save File', self.data_file_name + '_export.parquet', 'Parquet Files (*.parquet)')[0]
+        if path_file:
+            self.dataframe.to_parquet(path_file, index=False)
+            self.set_status("Data exported to {}".format(path_file))
+
+    # Schema functions
+    def extract_schema_view(self):
+        if self.dataframe.empty:
+            self.set_status("No records")
+            QtWidgets.QMessageBox.information(self, 'Message', "No records to show", QtWidgets.QMessageBox.Ok)
+            return
+        df_schema = self.get_schema_df()
+        if df_schema.empty:
+            self.set_status("No records")
+            QtWidgets.QMessageBox.information(self, 'Message', "No records to show", QtWidgets.QMessageBox.Ok)
+            return
+        
+        # Cambiar de QMessageBox a QDialog
+        # Crear el QMessageBox
+        view_schema_box = QtWidgets.QDialog(self)
+        view_schema_box.setWindowTitle("Schema View")
+        view_schema_box.setModal(True)
+        view_schema_box.setFixedSize(400, 400)
+
+        container = QtWidgets.QWidget()
+        layout = QtWidgets.QVBoxLayout(container)
+
+        table_schema = QtWidgets.QTableWidget()
+        table_schema.setColumnCount(df_schema.shape[1])
+        table_schema.setRowCount(df_schema.shape[0])
+        table_schema.setHorizontalHeaderLabels(df_schema.columns)
+        table_schema.setVerticalHeaderLabels([str(i) for i in range(1, df_schema.shape[0]+1)])
+        table_schema.setColumnWidth(0, 200)
+        table_schema.setColumnWidth(1, 80)
+        table_schema.setColumnWidth(2, 80)
+        table_schema.setHorizontalHeaderLabels(['Column Name', 'Pandas Type', 'Spark Type'])
+        for i in range(df_schema.shape[0]):
+            for j in range(df_schema.shape[1]):
+                table_schema.setItem(i, j, QtWidgets.QTableWidgetItem(str(df_schema.iloc[i, j])))
+        table_schema.resizeRowsToContents()
+        table_schema.resizeColumnsToContents()
+        table_schema.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
+        #table_schema.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
+        #table_schema.setSelectionMode(QtWidgets.QAbstractItemView.MultiSelection)
+        table_schema.setAlternatingRowColors(True)
+        table_schema.setToolTip("Schema of the file")
+        #table_schema.customContextMenuRequested.connect(lambda pos: self.show_context_menu(pos, table_schema))
+        
+        layout.addWidget(table_schema)
+
+        layout_buttons = QtWidgets.QHBoxLayout()
+        
+        button_export_excel = QtWidgets.QPushButton("Export to Excel")
+        button_export_excel.setToolTip("Export schema to Excel")
+        button_export_excel.clicked.connect(self.extract_schema_to_excel)
+        layout_buttons.addWidget(button_export_excel)
+
+        button_export_json = QtWidgets.QPushButton("Export to JSON")
+        button_export_json.setToolTip("Export schema to JSON")
+        button_export_json.clicked.connect(self.extract_schema_to_json)
+        layout_buttons.addWidget(button_export_json)
+
+        layout.addLayout(layout_buttons)
+
+        view_schema_box.setLayout(layout)
+        view_schema_box.exec_()
+
+
+    def extract_schema_to_excel(self):
+        if self.dataframe.empty:
+            self.set_status("No records")
+            return
+        # Sugerir nombre de archivo self.data_file_name + '_schema.xlsx'
+        path_file = QtWidgets.QFileDialog.getSaveFileName(self, 'Save File', self.data_file_name + '_schema.xlsx', 'Excel Files (*.xlsx)')[0]
+        if path_file:
+            df_schema = self.get_schema_df()
+            df_schema.to_excel(path_file, index=False)
+            self.set_status("Schema extracted to Excel")
+
+    def extract_schema_to_json(self):
+        if self.dataframe.empty:
+            self.set_status("No records")
+            return
+        
+        path_file = QtWidgets.QFileDialog.getSaveFileName(self, 'Save File', self.data_file_name + '_schema.json', 'JSON Files (*.json)')[0]
+        if path_file:
+            df_schema = self.get_schema_df()
+            df_schema.columns = [col.lower().replace(' ', '_') for col in df_schema.columns]
+
+            json_schema = {
+                'schema': df_schema.to_dict(orient='records'),
+                'total_columns': df_schema.shape[0],
+                'created_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                'data_file': f"{self.data_file_name}.{self.data_file_ext}"
+            }
+            with open(path_file, 'w') as file: 
+                file.write(json.dumps(json_schema, indent=4))
+            self.set_status("Schema extracted to JSON")
+
+    def compare_json_schemas(self):
+        # solicitar dos archivos json y compararlos
+        json_file_path1 = QtWidgets.QFileDialog.getOpenFileName(self, 'Open File', '', 'JSON Files (*.json)')[0]
+        json_file_path2 = QtWidgets.QFileDialog.getOpenFileName(self, 'Open File', '', 'JSON Files (*.json)')[0]
+
+        if json_file_path1 and json_file_path2:
+            with open(json_file_path1, 'r') as file:
+                json1 = json.load(file)
+            with open(json_file_path2, 'r') as file:
+                json2 = json.load(file)
+            
+            cols_with_diff = []
+            for col in json1['schema']:
+                col_name = col['column_name']
+                col_type = col['spark_type']
+                col_found = False
+                for col2 in json2['schema']:
+                    if col2['column_name'] == col_name and col2['spark_type'] == col_type:
+                        col_found = True
+                        break
+                if not col_found:
+                    cols_with_diff.append(col_name)
+            
+            if len(cols_with_diff) == 0:
+                #Alertar que los archivos tienen el mismo esquema
+                msg_box = f"Both JSON files have the same schema\n\nTotal columns: {json1['total_columns']}"
+                QtWidgets.QMessageBox.information(self, 'Message', msg_box, QtWidgets.QMessageBox.Ok)
+            else:
+                error_box = f"Both JSON files have different schemas\n\nTotal columns file 1: {json1['total_columns']}\nTotal columns file 2: {json2['total_columns']}, \n\nColumns with differences:\n{len(cols_with_diff)}"
+                #QtWidgets.QMessageBox.critical(self, 'Error', error_box, QtWidgets.QMessageBox.Ok)
+                # Mensaje de error con un campo de texto
+                msg_box = QtWidgets.QMessageBox()
+                msg_box.setIcon(QtWidgets.QMessageBox.Critical)
+                msg_box.setText("Error: " + error_box)
+                msg_box.setInformativeText("Columns with differences:")
+                msg_box.setDetailedText("\n".join(cols_with_diff))
+                msg_box.setWindowTitle("Error")
+                msg_box.setStandardButtons(QtWidgets.QMessageBox.Ok)
+                msg_box.exec_()
+                #print("Columns with differences:", cols_with_diff)
+    
+    def show_about(self):
+        about_box = QtWidgets.QMessageBox()
+        about_box.setWindowTitle("About")
+        about_box.setText("Datalake Utils")
+        about_box.setInformativeText("Desktop Version 1.0.0\n\nDeveloped by: edronald7@gmail.com\n\nThis application is useful for analyzing data lake files.\n\nIt allows you to open, view, and export data files in various formats such as Parquet, CSV, and TXT.\n\nYou can also extract and export schemas to Excel and JSON formats.")
+        about_box.setIcon(QtWidgets.QMessageBox.Information)
+        about_box.setStandardButtons(QtWidgets.QMessageBox.Ok)
+        about_box.exec_()
+
 
 if __name__ == '__main__':
     app = QtWidgets.QApplication(sys.argv)
