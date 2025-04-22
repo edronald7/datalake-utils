@@ -13,5 +13,5 @@ def start_flask():
 start_flask()
 
 # Crear una ventana de escritorio que cargue la URL del servidor Flask
-window = webview.create_window('My Flask App', 'http://127.0.0.1:5000')
+window = webview.create_window('Datalake Utils Webapp', 'http://127.0.0.1:5000')
 webview.start()
