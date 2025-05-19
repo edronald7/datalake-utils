@@ -1,9 +1,11 @@
+import os
 import sys
 import json
 import yaml
 import pandas as pd
 from datetime import datetime
 from PyQt5 import QtWidgets, uic
+from PyQt5.QtGui import QIcon
 
 class Main(QtWidgets.QMainWindow):
     def __init__(self):
@@ -25,7 +27,18 @@ class Main(QtWidgets.QMainWindow):
         self.file_delimiter = self.config['app']['files']['txt-delimiter']
 
     def init_gui(self):
-        self.setWindowTitle("Datalake Utils")
+        # Construct path relative to script location
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        icon_path = os.path.join(script_dir, 'icon.png')
+        if os.path.exists(icon_path):
+            # Set icon window
+            self.setWindowIcon(QIcon(icon_path))
+            print(f"Icon set from {icon_path}")
+
+        # Set window title
+        self.title = "Parquet Viewer"
+        self.title_add = " - Datalake Utils"
+        self.setWindowTitle(self.title + self.title_add)
         self.set_status("No records")
         self.path_file = None
         self.data_file_name = None
@@ -93,6 +106,17 @@ class Main(QtWidgets.QMainWindow):
             container = QtWidgets.QWidget()
             layout = QtWidgets.QVBoxLayout(container)
 
+            # Con o sin cabecera
+            layout_header = QtWidgets.QHBoxLayout()
+            label_header = QtWidgets.QLabel("Header:")
+            layout_header.addWidget(label_header)
+            option_header = QtWidgets.QComboBox()
+            option_header.addItems(['True', 'False'])
+            option_header.setCurrentText('True')
+            option_header.setToolTip("Select if the file has header")
+            layout_header.addWidget(option_header)
+            layout.addLayout(layout_header)
+
             # Primer QComboBox (separador)
             layout_sep = QtWidgets.QHBoxLayout()
             label_sep = QtWidgets.QLabel("Separator:")
@@ -127,11 +151,12 @@ class Main(QtWidgets.QMainWindow):
 
             # Ejecutar el QMessageBox y obtener resultados
             if select_box.exec_() == QtWidgets.QMessageBox.Ok:
+                self.file_has_header = option_header.currentText() == 'True'
                 self.file_delimiter = option_sep.currentText()
                 self.file_encoding = option_enc.currentText()
                 self.file_auto_infer_types = option_infer.isChecked()
                 self.path_file = path_file
-                self.dataframe = pd.read_csv(path_file, sep=self.file_delimiter, encoding=self.file_encoding, dtype=None if self.file_auto_infer_types else 'str', compression=compres)
+                self.dataframe = pd.read_csv(path_file, sep=self.file_delimiter, encoding=self.file_encoding, dtype=None if self.file_auto_infer_types else 'str', compression=compres, header=0 if self.file_has_header else None)
 
                 self.set_status_total_records()
                 self.show_data()
@@ -174,10 +199,15 @@ class Main(QtWidgets.QMainWindow):
                 self.data_file_name = self.path_file.split('/')[-1]
 
         self.data_file_name = self.data_file_name.split('.')[0]
-
+        
+        # Set file name in the title
+        self.setWindowTitle(self.data_file_name +'.'+ self.data_file_ext + self.title_add)
 
     def show_data(self):
         self.set_data_file_info()
+        # Set columns to col1, col2, col3, col4 if the dataframe has no columns
+        if not self.file_has_header:
+            self.dataframe.columns = ['col' + str(i) for i in range(1, self.dataframe.shape[1]+1)]
 
         # Clean tableWidget
         self.tableWidget.clear()
@@ -541,3 +571,10 @@ if __name__ == '__main__':
     window = Main()
     window.show()
     sys.exit(app.exec_())
+
+"""
+TODO:
+- Icono app
+- Loading mientras abre el archivo
+- Evaluar abrir otros formatos de archivos datalake: orc, avro, etc
+"""

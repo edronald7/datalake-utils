@@ -1,0 +1,7 @@
+{% extends 'base_admin.html' %}
+{% block title %}Admin Dashboard{% endblock %}
+{% block content %}
+<h1>Welcome to the Admin Panel</h1>
+<p>Hello, {{ current_user.username }}!</p>
+<a href="{{ url_for('auth.logout') }}" class="btn btn-danger">Logout</a>
+{% endblock %}

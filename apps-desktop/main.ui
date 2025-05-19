@@ -9,12 +9,16 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>956</width>
+    <width>964</width>
     <height>486</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>Datalake Utils</string>
+  </property>
+  <property name="windowIcon">
+   <iconset>
+    <normaloff>icon.png</normaloff>icon.png</iconset>
   </property>
   <property name="statusTip">
    <string/>
@@ -373,13 +377,12 @@
     </item>
    </layout>
   </widget>
-  
   <widget class="QMenuBar" name="menubar">
    <property name="geometry">
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>956</width>
+     <width>964</width>
      <height>28</height>
     </rect>
    </property>
@@ -425,7 +428,6 @@
    <addaction name="menuSchema"/>
    <addaction name="menuHelp"/>
   </widget>
-  
   <action name="actionOpenParquetFile">
    <property name="text">
     <string>Open *.parquet File</string>
@@ -451,7 +453,6 @@
     <string>Close File and Clean</string>
    </property>
   </action>
-
   <action name="actionExtractExportData">
    <property name="text">
     <string>Extract and Export Data</string>
@@ -462,7 +463,6 @@
     <string>Export to Parquet</string>
    </property>
   </action>
-
   <action name="actionSchemaView">
    <property name="text">
     <string>Extract Schema and View</string>
@@ -483,13 +483,11 @@
     <string>Compare two JSON Schemas</string>
    </property>
   </action>
-
   <action name="actionAbout">
    <property name="text">
     <string>About</string>
    </property>
   </action>
-  
   <action name="actionExit">
    <property name="text">
     <string>Exit</string>
