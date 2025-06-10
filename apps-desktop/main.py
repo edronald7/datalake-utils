@@ -25,6 +25,7 @@ class Main(QtWidgets.QMainWindow):
         self.file_auto_infer_types = self.config['app']['files']['txt-auto-infer-types']
         self.file_encodings = [enc.strip() for enc in self.config['app']['files']['txt-encodings'].split(',')]
         self.file_delimiter = self.config['app']['files']['txt-delimiter']
+        self.file_has_header = True
 
     def init_gui(self):
         # Construct path relative to script location
