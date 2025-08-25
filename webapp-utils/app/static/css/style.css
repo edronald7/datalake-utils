@@ -115,6 +115,18 @@ a.sidebar-link:hover {
     background-color: rgba(255, 255, 255, .075);
     border-left: 3px solid #3b7ddd;
 }
+a.sidebar-menu{
+    padding: .625rem 1.625rem;
+    color: #0e2238;
+    display: block;
+    font-size: 0.9rem;
+    white-space: nowrap;
+    border-left: 3px solid transparent;
+}
+a.sidebar-menu:hover {
+    background-color: rgba(255, 255, 255, .075);
+    border-left: 3px solid #3b7ddd;
+}
 
 .sidebar-item {
     position: relative;
